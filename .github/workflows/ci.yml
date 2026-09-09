@@ -1,0 +1,38 @@
+name: CI
+on:
+  push:
+    branches:
+      - master
+      - test-*
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        default: '"~= 2.2"'
+
+concurrency: # Cancel stale PR builds (but not push builds)
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJSON(format('[{0}]', inputs.branch || '" ~= 2.0.8"," ~= 2.2.10","#devel"')) }}
+
+    name: 'nim ${{matrix.branch}}'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - uses: nim-lang/setup-nimble-action@v1
+        with:
+          nimble-version: nightly
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Nim
+        run: nimble test --requires="nim${{matrix.branch}}"
+      - name: Run tests
+        run: nimble test --requires="nim${{matrix.branch}}"
